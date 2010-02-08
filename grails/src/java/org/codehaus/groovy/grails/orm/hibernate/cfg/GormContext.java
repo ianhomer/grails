@@ -9,24 +9,17 @@ import org.hibernate.cfg.NamingStrategy;
 public class GormContext {
   private static final NamingStrategy DEFAULT_NAMING_STRATEGY = ImprovedNamingStrategy.INSTANCE;
   private static final Map<Class<?>, Mapping> MAPPING_CACHE = new HashMap<Class<?>, Mapping>();
-  private static GormContext singleton;
-
-  static {
-    singleton = new GormContext();
-    singleton.setNamingStrategy(DEFAULT_NAMING_STRATEGY);
-  }
-
   private static ThreadLocal<GormContext> instance = new ThreadLocal<GormContext>();
 
-  private NamingStrategy namingStrategy;
+  private NamingStrategy namingStrategy = DEFAULT_NAMING_STRATEGY;
 
   public static GormContext get() {
     GormContext gormContext = instance.get();
-    if (instance == null) {
+    if (gormContext == null) {
       gormContext = new GormContext();
       instance.set(gormContext);
     }
-    return instance.get();
+    return gormContext;
   }
 
   public static void destroy() {
