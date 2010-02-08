@@ -67,7 +67,6 @@ public final class GrailsDomainBinder {
 
     private static final String FOREIGN_KEY_SUFFIX = "_id";
     private static final Log LOG = LogFactory.getLog(GrailsDomainBinder.class);
-    private static final NamingStrategy namingStrategy = ImprovedNamingStrategy.INSTANCE;
     private static final String STRING_TYPE = "string";
     private static final String EMPTY_PATH = "";
     private static final char UNDERSCORE = '_';
@@ -77,7 +76,6 @@ public final class GrailsDomainBinder {
     private static final String CASCADE_NONE = "none";
     private static final String BACKTICK = "`";
 
-    private static final Map<Class, Mapping> MAPPING_CACHE = new HashMap<Class, Mapping>();
     private static final String ENUM_TYPE_CLASS = "org.hibernate.type.EnumType";
     private static final String ENUM_CLASS_PROP = "enumClass";
     private static final String ENUM_TYPE_PROP = "type";
@@ -526,6 +524,7 @@ public final class GrailsDomainBinder {
     }
 
     private static void bindCollectionWithJoinTable(GrailsDomainClassProperty property, Mappings mappings, Collection collection, PropertyConfig config) {
+        NamingStrategy namingStrategy = GormContext.get().getNamingStrategy();
         SimpleValue element;
         if(property.isBasicCollectionType()) {
            element = new SimpleValue(collection.getCollectionTable());
@@ -948,6 +947,7 @@ public final class GrailsDomainBinder {
      * where you have two mapping tables for left_right and right_left
      */
     private static String calculateTableForMany(GrailsDomainClassProperty property) {
+        NamingStrategy namingStrategy = GormContext.get().getNamingStrategy();
         String propertyColumnName = namingStrategy.propertyToColumnName(property.getName());
         if (Map.class.isAssignableFrom(property.getType())) {
             String tablePrefix = getTableName(property.getDomainClass());
@@ -1021,7 +1021,7 @@ public final class GrailsDomainBinder {
             tableName = m.getTableName();
         }
         if (tableName == null) {
-            tableName = namingStrategy.classToTableName(domainClass.getShortName());
+            tableName = GormContext.get().getNamingStrategy().classToTableName(domainClass.getShortName());
         }
         return tableName;
     }
@@ -1068,7 +1068,7 @@ public final class GrailsDomainBinder {
                     m = builder.evaluate((Closure) o);
                 }
 
-                MAPPING_CACHE.put(domainClass.getClazz(), m);
+                GormContext.get().putMapping(domainClass.getClazz(), m);
                 return m;
             }
         } catch (Exception e) {
@@ -1086,7 +1086,7 @@ public final class GrailsDomainBinder {
      * @return A Mapping object or null
      */
     public static Mapping getMapping(Class theClass) {
-        return theClass != null ? MAPPING_CACHE.get(theClass) : null;
+        return theClass != null ? GormContext.get().getMapping(theClass) : null;
     }
 
     /**
@@ -1096,7 +1096,7 @@ public final class GrailsDomainBinder {
      * @return A Mapping object or null
      */
     public static Mapping getMapping(GrailsDomainClass domainClass) {
-        return domainClass != null ? MAPPING_CACHE.get(domainClass.getClazz()) : null;
+        return domainClass != null ? GormContext.get().getMapping(domainClass.getClazz()) : null;
     }
 
     /**
@@ -1889,7 +1889,7 @@ public final class GrailsDomainBinder {
                 if(pc == null) {
                     if(mapping == null) {
                         mapping = new Mapping();
-                        MAPPING_CACHE.put(refDomainClass.getClazz(), mapping);
+                        GormContext.get().putMapping(refDomainClass.getClazz(), mapping);
                     }
                     pc = new PropertyConfig();
                     mapping.getColumns().put(property.getName(), pc);
@@ -1897,7 +1897,7 @@ public final class GrailsDomainBinder {
                 if(!hasJoinKeyMapping(pc)) {
                     JoinTable jt = new JoinTable();
                     final ColumnConfig columnConfig = new ColumnConfig();
-                    columnConfig.setName(namingStrategy.propertyToColumnName(property.getName())+UNDERSCORE+FOREIGN_KEY_SUFFIX);
+                    columnConfig.setName(GormContext.get().getNamingStrategy().propertyToColumnName(property.getName())+UNDERSCORE+FOREIGN_KEY_SUFFIX);
                     jt.setKey(columnConfig);
                     pc.setJoinTable(jt);
                 }
@@ -1933,7 +1933,7 @@ public final class GrailsDomainBinder {
         for (String propertyName : propertyNames) {
             final ColumnConfig cc = new ColumnConfig();
 
-            cc.setName(namingStrategy.classToTableName(refDomainClass.getShortName()) + UNDERSCORE +getDefaultColumnName(refDomainClass.getPropertyByName(propertyName)));
+            cc.setName(GormContext.get().getNamingStrategy().classToTableName(refDomainClass.getShortName()) + UNDERSCORE +getDefaultColumnName(refDomainClass.getPropertyByName(propertyName)));
             config.getColumns().add(cc);
         }
         bindSimpleValue(property, value, path, config);
@@ -2448,7 +2448,7 @@ public final class GrailsDomainBinder {
 
         if (columnName == null) {
             if (StringHelper.isNotEmpty(path)) {
-                columnName = namingStrategy.propertyToColumnName(path) +
+                columnName = GormContext.get().getNamingStrategy().propertyToColumnName(path) +
                         UNDERSCORE +
                         getDefaultColumnName(grailsProp);
             } else {
@@ -2467,6 +2467,7 @@ public final class GrailsDomainBinder {
     }
 
     private static String getDefaultColumnName(GrailsDomainClassProperty property) {
+        NamingStrategy namingStrategy = GormContext.get().getNamingStrategy();
         String columnName = namingStrategy.propertyToColumnName(property.getName());
         if(property.isAssociation() && property.getReferencedDomainClass()!=null) {
 
@@ -2497,7 +2498,7 @@ public final class GrailsDomainBinder {
 
     private static String getForeignKeyForPropertyDomainClass(GrailsDomainClassProperty property) {
         final String propertyName = property.getDomainClass().getPropertyName();
-        return namingStrategy.propertyToColumnName(propertyName) + FOREIGN_KEY_SUFFIX;
+        return GormContext.get().getNamingStrategy().propertyToColumnName(propertyName) + FOREIGN_KEY_SUFFIX;
     }
 
 
@@ -2506,7 +2507,7 @@ public final class GrailsDomainBinder {
         if(pc != null && pc.getIndexColumn() != null && pc.getIndexColumn().getColumn() != null) {
             return pc.getIndexColumn().getColumn();
         }
-        return namingStrategy.propertyToColumnName(property.getName()) + UNDERSCORE + IndexedCollection.DEFAULT_INDEX_COLUMN_NAME;
+        return GormContext.get().getNamingStrategy().propertyToColumnName(property.getName()) + UNDERSCORE + IndexedCollection.DEFAULT_INDEX_COLUMN_NAME;
     }
 
 
@@ -2525,7 +2526,7 @@ public final class GrailsDomainBinder {
         if(hasJoinTableColumnNameMapping(pc)) {
             return pc.getJoinTable().getColumn().getName();
         }
-        return namingStrategy.propertyToColumnName(property.getName()) + UNDERSCORE + IndexedCollection.DEFAULT_ELEMENT_COLUMN_NAME;
+        return GormContext.get().getNamingStrategy().propertyToColumnName(property.getName()) + UNDERSCORE + IndexedCollection.DEFAULT_ELEMENT_COLUMN_NAME;
     }
 
     private static boolean hasJoinTableColumnNameMapping(PropertyConfig pc) {
