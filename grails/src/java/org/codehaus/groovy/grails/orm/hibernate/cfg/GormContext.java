@@ -13,11 +13,15 @@ public class GormContext {
 
   private NamingStrategy namingStrategy = DEFAULT_NAMING_STRATEGY;
 
+  public static void set(GormContext gormContext) {
+    instance.set(gormContext);
+  }
+  
   public static GormContext get() {
     GormContext gormContext = instance.get();
     if (gormContext == null) {
       gormContext = new GormContext();
-      instance.set(gormContext);
+      set(gormContext);
     }
     return gormContext;
   }
